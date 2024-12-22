@@ -12,79 +12,138 @@ vector<string> word_book;
 string displayed_words;
 bool game_over{false};
 
-enum Mode { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
-Mode mode;
+enum ModeType { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
 
+class Mode
+{
+private:
+    ModeType mode;
+public:
+    void pickMode() {
+        bool modePicked = false;
+        while (!(modePicked)) {
+            cout << "Pick your mode: " << "10s, 30s, 60s, 10-words, 25-words, 50-words" << endl;
+            string choice;
+            cin >> choice; 
+            if (choice.compare("10s") == 0) {
+                mode = Seconds_10;
+                modePicked = true;
+            } else if (choice.compare("30s") == 0) {
+                mode = Seconds_30;
+                modePicked = true;
+            } else if (choice.compare("60s") == 0) {
+                mode = Seconds_60;
+                modePicked = true;
+            } else if (choice.compare("10-words") == 0) {
+                mode = Words_10;
+                modePicked = true;
+            } else if (choice.compare("25-words") == 0) {
+                mode = Words_25;
+                modePicked = true;
+            } else if (choice.compare("50-words") == 0) {
+                mode = Words_50;
+                modePicked = true;
+            } else {
+                cout << "Invalid choice..." << endl;
+                continue;
+            }
+        }
+    }
+
+    ModeType getMode() const { // const before denotes that it is not able to modify any data within the body, const after promises not to modify and member variables of the class
+        return mode;
+    }
+
+    bool isTimedMode() const {
+        return mode == Seconds_10 || mode == Seconds_30 || mode = Seconds_60;
+    }
+};
 
 class Game 
 {
-    private:
-        Mode mode;
-        WordManager wordmanager;
-        Player player;
-        bool gameOver;
-    public:
-        Game() :gameOver(false) {}
+private:
+    Mode mode;
+    WordManager wordmanager;
+    Player player;
+    bool gameOver;
+public:
+    Game() :gameOver(false) {}
 
-        void setup() {
-            wordmanager.loadWords("common_words.txt");
-            mode.pickMode();
-        }
+    void setup() {
+        wordmanager.loadWords("common_words.txt");
+        mode.pickMode();
+    }
 
-        void run() {
-            while (!(gameOver)) {
-                if (mode.isTimedMode()) {
-                    playTimeGame();
-                } else {
-                    playCountGame();
-                }
+    void run() {
+        while (!(gameOver)) {
+            if (mode.isTimedMode()) {
+                playTimeGame();
+            } else {
+                playCountGame();
             }
         }
+    }
 
-        void playTimedGame();
-        void playCountGame();
+    void playTimedGame();
+    void playCountGame();
 
-        void endGame();
+    void endGame();
 
 };
 
 class WordManager
 {
-
-    private:
-        vector<string> word_book;
-        string displayed_words;
-    public:
-        void loadWords(const string &filename) {
-            ifstream file(filename);
-            string word;
-            while(getline(file, word)) {
-                word_book.push_back(word);
-            }
+private:
+    vector<string> word_book;
+    string displayed_words;
+public:
+    void loadWords(const string &filename) {
+        ifstream file(filename);
+        string word;
+        while(getline(file, word)) {
+            word_book.push_back(word);
         }
+    }
 
-        string generateWords(int count) {
-            displayed_words = "";
-            for (int i = 0; i < count; i ++) {
-                int randomIndex = rand() % word_book.size();
-                displayed_words += word_book[randomIndex] + " ";
-            }
-            return displayed_words;
+    string generateWords(int count) {
+        displayed_words = "";
+        for (int i = 0; i < count; i ++) {
+            int randomIndex = rand() % word_book.size();
+            displayed_words += word_book[randomIndex] + " ";
         }
+        return displayed_words;
+    }
 
-        bool checkWord(const string &userWord, int position) {
-            return userWord[position] == displayed_words[position];
-        }
-};
+    const string &getDisplayedWords() const {
+        return displayed_words;
+    }
 
-class Game
-{
-
+    bool checkWord(const string &userWord, int position) {
+        return userWord[position] == displayed_words[position];
+    }
 };
 
 class Player
 {
+private:
+    int words_typed;
+    int misclicks;
+public:
+    Player() :words_typed(0), misclicks(0) {}; // same as line below
+    // Player() {
+    //     this->words_typed = 0;
+    //     this->misclicks = 0;
+    // }
 
+    void incrementWordsTyped() { words_typed++; }
+    void incrementMisclicks() { misclicks++; }
+
+    int getWordsTyped() const { return words_typed; } 
+    int getMisclicks() const { return misclicks; }
+
+    double calculateAccuracy(int totalLetters) const {
+        return ((100.0 / totalLetters) * (totalLetters - misclicks));
+    }
 };
 
 class Display
@@ -94,6 +153,13 @@ class Display
 
 class InputHandler
 {
+    char getKeyPress() {
+        return _getch();
+    }
+
+    char isKeyHit() {
+        return _kbhit();
+    }
 
 };
 
@@ -102,37 +168,7 @@ class InputHandler
 
 
 
-void pickMode() {
-    bool modePicked = false;
-    
-    while (!(modePicked)) {
-        cout << "Pick your mode: " << "10s, 30s, 60s, 10-words, 25-words, 50-words" << endl;
-        string choice;
-        cin >> choice; 
-        if (choice.compare("10s") == 0) {
-            mode = Seconds_10;
-            modePicked = true;
-        } else if (choice.compare("30s") == 0) {
-            mode = Seconds_30;
-            modePicked = true;
-        } else if (choice.compare("60s") == 0) {
-            mode = Seconds_60;
-            modePicked = true;
-        } else if (choice.compare("10-words") == 0) {
-            mode = Words_10;
-            modePicked = true;
-        } else if (choice.compare("25-words") == 0) {
-            mode = Words_25;
-            modePicked = true;
-        } else if (choice.compare("50-words") == 0) {
-            mode = Words_50;
-            modePicked = true;
-        } else {
-            cout << "Invalid choice..." << endl;
-            continue;
-        }
-    }
-}
+
 
 void Setup()
 {
