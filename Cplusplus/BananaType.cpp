@@ -12,8 +12,10 @@ vector<string> word_book;
 string displayed_words;
 bool game_over{false};
 
+
 enum ModeType { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
 
+// handle game's mode
 class Mode
 {
 private:
@@ -59,38 +61,7 @@ public:
     }
 };
 
-class Game 
-{
-private:
-    Mode mode;
-    WordManager wordmanager;
-    Player player;
-    bool gameOver;
-public:
-    Game() :gameOver(false) {}
-
-    void setup() {
-        wordmanager.loadWords("common_words.txt");
-        mode.pickMode();
-    }
-
-    void run() {
-        while (!(gameOver)) {
-            if (mode.isTimedMode()) {
-                playTimeGame();
-            } else {
-                playCountGame();
-            }
-        }
-    }
-
-    void playTimedGame();
-    void playCountGame();
-
-    void endGame();
-
-};
-
+// Manages display words for the game
 class WordManager
 {
 private:
@@ -123,6 +94,7 @@ public:
     }
 };
 
+// Manages player statistics
 class Player
 {
 private:
@@ -146,24 +118,97 @@ public:
     }
 };
 
+// Manage UI
 class Display
 {
-
+public:
+    void showGameOver(int time, const string &words, int misclicks, string &mode) {  // have all addresses explained
+        int letterCount{ static_cast<int>(words.length()) };
+        int wordCount{ letterCount / 5 }; // Avg # of Letters/word
+        cout << "\n\tGAME OVER!\nwpm: " << (wordCount / (time / 60)) // static cast is more explicit and type safe
+            << "\nacc: " << ((100.0 / letterCount) * (letterCount - misclicks)) << "%" << endl;
+    }
+    
+    void showDisplayedWords(const string &words) {
+        cout << '\n' << words << '\n' << endl; // in the future look into increasing font size
+    }
 };
 
+// Outlines user interaction 
 class InputHandler
 {
+public:
     char getKeyPress() {
         return _getch();
     }
 
-    char isKeyHit() {
+    bool isKeyHit() {
         return _kbhit();
     }
-
 };
 
+// Main game class
+class Game 
+{
+private:
+    Mode mode;
+    WordManager wordManager;
+    Player player;
+    Display display;
+    InputHandler inputHandler;
+    bool gameOver;
+public:
+    Game() :gameOver(false) {}
 
+    void setup() {
+        wordManager.loadWords("common_words.txt");
+        mode.pickMode();
+    }
+
+    void run() {
+        while (!(gameOver)) {
+            if (mode.isTimedMode()) {
+                playTimedGame();
+            } else {
+                playCountGame();
+            }
+        }
+    }
+
+    void playTimedGame() {
+        int timeLimit = (mode.getMode() == Seconds_10) ? 10 : (mode.getMode() == Seconds_30) ? 30 : 60;
+        string words = wordManager.generateWords(150);
+        display.showDisplayedWords(words);
+        
+        string userTyping;
+        int userSize = 0;
+        int misclicks = 0;
+
+        auto startTime = chrono::steady_clock::now();
+        while(chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - startTime).count() < timeLimit) {
+            if (inputHandler.isKeyHit()) {
+                char key = inputHandler.getKeyPress();
+                userTyping.push_back(key);
+                if (userTyping.size() > userSize) {
+                    userSize = userTyping.size();
+                    if (words[userSize - 1] != userTyping[userSize - 1]) {
+                        player.incrementMisclicks();
+                    } else if (userTyping[userSize - 1] == ' ') {
+                        player.incrementWordsTyped();
+                    }
+                }
+            }
+        }
+        gameOver = true;
+        string modeString{"Time"};
+        display.showGameOver(timeLimit, words, player.getMisclicks(), modeString);
+    }
+    
+    void playCountGame();
+
+    void endGame();
+
+};
 
 
 
@@ -185,14 +230,7 @@ void Setup()
 
 } 
 
-void gameOver(int time, string words, int misclicks, string mode) {
-    int letterCount{ static_cast<int>(words.length()) };
-    int wordCount{ words_typed };
-    // may or may not need to have different game overs depending on the mode
-    cout << "\n\tGAME OVER!\nwpm: " << (wordCount / (static_cast<int>(time) / 60)) // static cast is more explicit and type safe
-    << "\nacc: " << ((100 / letterCount) * (letterCount - misclicks)) << "%" << endl;
-    game_over = true;
-}
+
 
 void gameplay(string bananasTyping,int &userSize, ) {
         cout << bananasTyping << flush;             // shows user there input
