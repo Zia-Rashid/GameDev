@@ -120,7 +120,7 @@ public:
 
         cout << "\n\n\tGAME OVER!\n" << endl;
         cout << "mode: " << mode << endl;
-        cout << "wpm: " << wpm << endl;
+        cout << "wpm: " << static_cast<int>(wpm) << endl;
         cout << "acc: " << acc << "%" << endl;
     }
     
@@ -234,6 +234,11 @@ public:
         while (chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - startTime).count() < timeLimit) {
             if (inputHandler.isKeyHit()) {
                 char key = inputHandler.getKeyPress();
+
+                if (key == '`') { // End game early if the backtick is pressed
+                    gameOver = true;
+                    break;
+                }
                 
                 if (key == '\b' && !typedWords.empty()) { // Handle backspace
                     typedWords.pop_back();
@@ -266,30 +271,34 @@ public:
             if (inputHandler.isKeyHit()) {
                 char key = inputHandler.getKeyPress();
 
+                if (key == '`') { // End game early if the backtick is pressed
+                    gameOver = true;
+                    break;
+                }
+
                 if (key == '\b' && !typedWords.empty()) { // Handle backspace
                     typedWords.pop_back();
                 } else if (key != '\b') {
                     typedWords += key;
 
-                    // Check word completion
-                    size_t typedWordCount = count(typedWords.begin(), typedWords.end(), ' ');
-                    size_t displayedWordCount = count(words.begin(), words.end(), ' ');
-
-                    if (typedWordCount > displayedWordCount || typedWords.back() != words[typedWords.size() - 1]) {
+                    // Check for misclicks
+                    if (typedWords.size() <= words.size() && typedWords.back() != words[typedWords.size() - 1]) {
                         player.incrementMisclicks();
                     } else if (typedWords.back() == ' ') {
                         player.incrementWordsTyped();
                     }
                 }
-                display.showTypingProgress(typedWords, words);
-            }
 
-            // Check if all words have been typed correctly
-            if (typedWords == words) {
-                gameOver = true;
-                break;
+                display.showTypingProgress(typedWords, words);
+
+                // End game if the number of characters in typedWords matches displayed words
+                if (typedWords.size() >= words.size()) {
+                    gameOver = true;
+                    break;
+                }
             }
         }
+
         auto endTime = chrono::steady_clock::now();
         chrono::duration<double> elapsedTime = endTime - startTime;
 
