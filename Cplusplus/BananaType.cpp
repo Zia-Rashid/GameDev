@@ -111,14 +111,32 @@ public:
     void showGameOver(int time,const Player player, const string &typedWords, const string &mode) {  // have all addresses explained
         int totalChars{ static_cast<int>(typedWords.length()) };
         int wordCount{ totalChars / 5 }; // Avg # of Letters/word
-        cout << "\n\tGAME OVER!" << endl;
+        double wpm = (wordCount / static_cast<double>(time)) * 60;
+        double acc = (totalChars > 0) 
+        ? (((totalChars - player.getMisclicks()) * 100.0) / totalChars) 
+        : 100.0; // If no chars were typed, assume perfect accuracy
+
+        cout << "\n\n\tGAME OVER!\n" << endl;
         cout << "mode: " << mode << endl;
-        cout << "wpm: " << (wordCount / (time / 60)) << endl;
-        cout << "acc: " << (((totalChars - player.getMisclicks()) * 100.0) / totalChars) << "%" << endl;
+        cout << "wpm: " << wpm << endl;
+        cout << "acc: " << acc << "%" << endl;
     }
     
-    void showDisplayedWords(const string &words) {
+    void showDisplayedWords(const string &words, const string &typedWords) {
+        string border{ "" };
+        //string wordsToShow{ "" }; // displays onbly 15 words at a time
+        int spaces = 0;
+        for (int i = 0; i < 50; i++) { border += '-'; }
+        // for (int i = 0; i < words.length(); i++) {
+        //     if ( i > typedWords.length() && spaces < 15) {
+        //         wordsToShow += words[i];
+        //         if (words[words.length() - 1] == ' ') { spaces++; }
+        //     }
+        // }
+
+        cout << border << endl;
         cout << '\n' << words << '\n' << endl; // in the future look into increasing font size
+        cout << border << endl;
     }
 
     void showTypingProgress(const string &typedWords) { // returns current typedWords
@@ -166,10 +184,10 @@ public:
 
     void playTimedGame() {
         int timeLimit = (mode.getMode() == Seconds_10) ? 10 : (mode.getMode() == Seconds_30) ? 30 : 60;
-        string words = wordManager.generateWords(150);
-        display.showDisplayedWords(words);
-
+        string words = wordManager.generateWords(80);
         string typedWords = "";
+        display.showDisplayedWords(words, typedWords);
+
         auto startTime = chrono::steady_clock::now();
         while (chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - startTime).count() < timeLimit) {
             if (inputHandler.isKeyHit()) {
@@ -180,7 +198,7 @@ public:
                     typedWords += key;
                     if (typedWords.back() != words[typedWords.size() - 1]) {
                         player.incrementMisclicks();
-                    } else if (typedWords.back() == ' ') {
+                    } else if (typedWords.back() == ' ' && typedWords.substr(0, typedWords.find_last_of(' ')) == words.substr(0, typedWords.find_last_of(' '))) {
                         player.incrementWordsTyped();
                     }
                 }
@@ -194,9 +212,9 @@ public:
     void playCountGame() {
         int wordCount = (mode.getMode() == Words_10) ? 10 : (mode.getMode() == Words_25) ? 25 : 50;
         string words = wordManager.generateWords(wordCount);
-        display.showDisplayedWords(words);
-
         string typedWords = "";
+        display.showDisplayedWords(words, typedWords);
+
         auto startTime = chrono::steady_clock::now();
         while (player.getWordsTyped() < wordCount) {
             if (inputHandler.isKeyHit()) {
@@ -228,3 +246,21 @@ int main() {
     
     return 0;
 }
+
+/**
+ * Issue with when I reach a new line, otherwise pretty good:   maybe add new line breaks to user input.
+ * 
+ * kamma@ZiaX1 MINGW64 ~/SoftDev/languagezone/Cplusplus (master)
+$ ./bananatype.exe
+Pick your mode: 10s, 30s, 60s, 10-words, 25-words, 50-words
+25-words
+--------------------------------------------------
+
+extraction iron handsome literary revenge though window revenue collation execute feather actual lightly grieve fair establishment packing tangent governing five injure reputation converse quicken pick 
+
+--------------------------------------------------
+extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing fice injure reputation converse quicken pick
+
+kamma@ZiaX1 MINGW64 ~/SoftDev/languagezone/Cplusplus (master)
+$
+ */
