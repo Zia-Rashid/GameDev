@@ -15,6 +15,93 @@ bool game_over{false};
 enum Mode { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
 Mode mode;
 
+
+class Game 
+{
+    private:
+        Mode mode;
+        WordManager wordmanager;
+        Player player;
+        bool gameOver;
+    public:
+        Game() :gameOver(false) {}
+
+        void setup() {
+            wordmanager.loadWords("common_words.txt");
+            mode.pickMode();
+        }
+
+        void run() {
+            while (!(gameOver)) {
+                if (mode.isTimedMode()) {
+                    playTimeGame();
+                } else {
+                    playCountGame();
+                }
+            }
+        }
+
+        void playTimedGame();
+        void playCountGame();
+
+        void endGame();
+
+};
+
+class WordManager
+{
+
+    private:
+        vector<string> word_book;
+        string displayed_words;
+    public:
+        void loadWords(const string &filename) {
+            ifstream file(filename);
+            string word;
+            while(getline(file, word)) {
+                word_book.push_back(word);
+            }
+        }
+
+        string generateWords(int count) {
+            displayed_words = "";
+            for (int i = 0; i < count; i ++) {
+                int randomIndex = rand() % word_book.size();
+                displayed_words += word_book[randomIndex] + " ";
+            }
+            return displayed_words;
+        }
+
+        bool checkWord(const string &userWord, int position) {
+            return userWord[position] == displayed_words[position];
+        }
+};
+
+class Game
+{
+
+};
+
+class Player
+{
+
+};
+
+class Display
+{
+
+};
+
+class InputHandler
+{
+
+};
+
+
+
+
+
+
 void pickMode() {
     bool modePicked = false;
     
