@@ -10,32 +10,10 @@ using namespace std;
 int words_typed;
 vector<string> word_book;
 string displayed_words;
+bool game_over{false};
 
 enum Mode { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
 Mode mode;
-
-void Setup()
-{
-    words_typed = 0;                            // initialize word count
-
-    string word;                                
-    ifstream common_words("common_words.txt");
-    while (getline(common_words, word)) {       // initialize word_book
-        word_book.push_back(word);              
-    }
-    common_words.close();                       
-
-    pickMode();                                 // initialize mode
-
-} 
-
-void gameOver(int time, string words, int misclicks, string mode) {
-    int letterCount{ words.size() };
-    int wordCount{ words_typed };
-    // may or may not need to have different game overs depending on the mode
-    cout << "\tGAME OVER!\nSCORE: " << wordCount / (static_cast<int>(time) / 60) << "WPMs" // static cast is more explicit and type safe
-    << "\nAccuracy: " << (100 / letterCount) * (letterCount - misclicks) << "%" << endl;
-}
 
 void pickMode() {
     bool modePicked = false;
@@ -69,21 +47,32 @@ void pickMode() {
     }
 }
 
-void TimedGame(double time) {
-    for (int i = 0; i < 150; i++) {
-        int ranVal = rand() % 5001;
-        displayed_words += word_book[ranVal]; // add the random words to the back of a string. This will be constantly displayed in console and comparison will be checked. If they are not 0, add 1 to incorrect count
+void Setup()
+{
+    words_typed = 0;                            // initialize word count
+
+    string word;                                
+    ifstream common_words("common_words.txt");
+    while (getline(common_words, word)) {       // initialize word_book
+        word_book.push_back(word);              
     }
-    
-    cout << '\n' << displayed_words << '\n' <<  endl; 
+    common_words.close();                       
 
-    string bananasTyping{ "" };
-    int userSize{ 0 };
-    int misclicks{ 0 };
-    int originalTime = time;  // time goes down
+    pickMode();                                 // initialize mode
 
-    while (time > 0)
-    {
+} 
+
+void gameOver(int time, string words, int misclicks, string mode) {
+    int letterCount{ static_cast<int>(words.length()) };
+    int wordCount{ words_typed };
+    // may or may not need to have different game overs depending on the mode
+    cout << "\n\tGAME OVER!\nwpm: " << (wordCount / (static_cast<int>(time) / 60)) // static cast is more explicit and type safe
+    << "\nacc: " << ((100 / letterCount) * (letterCount - misclicks)) << "%" << endl;
+    game_over = true;
+}
+
+void gameplay(string bananasTyping,int &userSize, ) {
+        cout << bananasTyping << flush;             // shows user there input
         if (_kbhit()) {                             // if the key board is hit, evaluate it 
             bananasTyping.push_back(_getch()); 
             if (bananasTyping.size() > userSize) {  // only update data if there is forward progress, not fixing mistakes
@@ -95,8 +84,26 @@ void TimedGame(double time) {
                 if (banana_click == ' ')            // if they have written a new word, add to the score
                     words_typed++;
             }
-            if (bananasTyping.size() == displayed_words.size() || _getch() == 3) // 3 = ascii ctrl-C
+            if (bananasTyping.size() == displayed_words.size() || _getch() == '`')
                 gameOver(originalTime, displayed_words, misclicks, "Time");              // end game early 
+}
+
+void TimedGame(double time) {
+    for (int i = 0; i < 150; i++) {
+        int ranVal = rand() % 5001;
+        displayed_words += word_book[ranVal] + " "; // add the random words to the back of a string. This will be constantly displayed in console and comparison will be checked. If they are not 0, add 1 to incorrect count
+    }
+    
+    cout << '\n' << displayed_words << '\n' <<  endl; 
+
+    string bananasTyping{ "" };
+    int userSize{ 0 };
+    int misclicks{ 0 };
+    int originalTime = time;  // time goes down
+
+    while (time > 0)
+    {
+        
         }
         Sleep(1000);                                // wait 1 second before counting down again
         time--;
@@ -107,7 +114,7 @@ void TimedGame(double time) {
 void CountGame(int count) {
     for (int i = 0; i < count; i++) {
         int ranVal = rand() % 5001;
-        displayed_words += word_book[ranVal]; 
+        displayed_words += word_book[ranVal] + " "; 
     }
     cout << '\n' << displayed_words << '\n' <<  endl; 
 
@@ -118,7 +125,9 @@ void CountGame(int count) {
 
     while (count > words_typed)
     {
-        if (_kbhit()) {                             
+        
+        cout << bananasTyping << flush;    // shows user there input
+        while (_kbhit()) {                             
             bananasTyping.push_back(_getch()); 
             if (bananasTyping.size() > userSize) {  
                 userSize = bananasTyping.size();
@@ -129,7 +138,7 @@ void CountGame(int count) {
                 if (banana_click == ' ')            
                     words_typed++;
             }
-            if (bananasTyping.size() == displayed_words.size() || _getch() == 3)
+            if (bananasTyping.size() == displayed_words.size() || _getch() == '`') //  back tick to exit
                 gameOver(time_passed, displayed_words, misclicks, "Count");              
         }
         Sleep(1000);                                
@@ -168,8 +177,9 @@ int main()
 {
     srand(std::time(NULL));
     Setup();
-    while (!(gameOver)) {
+    while (!(game_over)) {
         Logic();
     }
+    return 0;
 }
 
