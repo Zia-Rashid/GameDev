@@ -1,10 +1,12 @@
 #include <iostream>
 #include <chrono>
+#include <algorithm>
 #include <vector>
 #include <fstream>
 #include <list>
 #include <conio.h>
 #include <windows.h>
+#include <thread>
 
 using namespace std;
 
@@ -123,24 +125,64 @@ public:
     }
     
     void showDisplayedWords(const string &words, const string &typedWords) {
-        string border{ "" };
-        //string wordsToShow{ "" }; // displays onbly 15 words at a time
-        int spaces = 0;
-        for (int i = 0; i < 50; i++) { border += '-'; }
-        // for (int i = 0; i < words.length(); i++) {
-        //     if ( i > typedWords.length() && spaces < 15) {
-        //         wordsToShow += words[i];
-        //         if (words[words.length() - 1] == ' ') { spaces++; }
-        //     }
-        // }
+        const int lineWidth{ 125 };
+        string border(lineWidth, '-');
+        cout << border << endl;
 
-        cout << border << endl;
-        cout << '\n' << words << '\n' << endl; // in the future look into increasing font size
-        cout << border << endl;
+        int charCount = 0;
+        for (char c : words) {
+            if (charCount >= lineWidth && c == ' ') {
+                cout << '\n';
+                charCount = 0;
+            }
+            cout << c;
+            charCount++;
+        }
+        cout << '\n' << border << "\n\n" << endl;
     }
 
-    void showTypingProgress(const string &typedWords) { // returns current typedWords
-        cout << "\r" << typedWords << flush;
+    void showTypingProgress(const string &typedWords, const string &displayedWords) {
+        const int lineWidth = 125;                 // Maximum line width
+        static vector<string> frozenLines;       // Store frozen lines
+        static size_t frozenLineCount = 0;       // Track how many lines are frozen
+
+        size_t numCompleteLines = typedWords.length() / lineWidth; // Completed lines
+        size_t currentLineStart = numCompleteLines * lineWidth;    // Start of the current line
+        string currentLine = typedWords.substr(currentLineStart);  // Extract the current line
+
+        // Handle new frozen lines
+        while (frozenLines.size() < numCompleteLines) {
+            frozenLines.push_back(typedWords.substr(frozenLines.size() * lineWidth, lineWidth));
+        }
+
+        // Move cursor up to the position where frozen lines are
+        cout << "\033[" << (frozenLineCount + 1) << "F";
+
+        // Redraw frozen lines (if any) only once
+        for (size_t i = frozenLineCount; i < frozenLines.size(); ++i) {
+            cout << "\033[K" << frozenLines[i] << '\n';
+        }
+        frozenLineCount = frozenLines.size(); // Update count of frozen lines
+
+        // Clear the current line
+        cout << "\033[K";
+
+        // Print the current line with character highlighting
+        for (size_t i = 0; i < currentLine.length(); ++i) {
+            if (i < displayedWords.length() && currentLine[i] == displayedWords[currentLineStart + i]) {
+                // Correct character
+                cout << currentLine[i];
+            } else if (i < displayedWords.length()) {
+                // Mistyped character (highlight in red)
+                cout << "\033[31m" << currentLine[i] << "\033[0m";
+            } else {
+                // Remaining characters (not yet typed)
+                cout << "_";
+            }
+        }
+
+        // Move cursor back to the appropriate position after updating the current line
+        cout << "\033[" << (frozenLineCount + 1) << "E" << flush;
     }
 };
 
@@ -182,7 +224,7 @@ public:
         } 
     }
 
-    void playTimedGame() {
+    void playTimedGame() { // same as Game::playTimedGame()
         int timeLimit = (mode.getMode() == Seconds_10) ? 10 : (mode.getMode() == Seconds_30) ? 30 : 60;
         string words = wordManager.generateWords(80);
         string typedWords = "";
@@ -192,49 +234,66 @@ public:
         while (chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - startTime).count() < timeLimit) {
             if (inputHandler.isKeyHit()) {
                 char key = inputHandler.getKeyPress();
-                if (key == '\b' && !typedWords.empty()) {  // Handle backspace
+                
+                if (key == '\b' && !typedWords.empty()) { // Handle backspace
                     typedWords.pop_back();
                 } else if (key != '\b') {
                     typedWords += key;
-                    if (typedWords.back() != words[typedWords.size() - 1]) {
+
+                    // Check and record misclicks
+                    if (typedWords.size() <= words.size() && typedWords.back() != words[typedWords.size() - 1]) {
                         player.incrementMisclicks();
-                    } else if (typedWords.back() == ' ' && typedWords.substr(0, typedWords.find_last_of(' ')) == words.substr(0, typedWords.find_last_of(' '))) {
+                    } else if (typedWords.back() == ' ') {
                         player.incrementWordsTyped();
                     }
                 }
-                display.showTypingProgress(typedWords);
+                display.showTypingProgress(typedWords, words);
             }
         }
         gameOver = true;
         display.showGameOver(timeLimit, player, typedWords, "Timed");
     }
 
-    void playCountGame() {
-        int wordCount = (mode.getMode() == Words_10) ? 10 : (mode.getMode() == Words_25) ? 25 : 50;
-        string words = wordManager.generateWords(wordCount);
+
+    void playCountGame() { 
+        int maxWordCount = (mode.getMode() == Words_10) ? 10 : (mode.getMode() == Words_25) ? 25 : 50;
+        string words = wordManager.generateWords(maxWordCount); // Generate words for the game
         string typedWords = "";
         display.showDisplayedWords(words, typedWords);
 
         auto startTime = chrono::steady_clock::now();
-        while (player.getWordsTyped() < wordCount) {
+        while (!gameOver) {
             if (inputHandler.isKeyHit()) {
                 char key = inputHandler.getKeyPress();
-                if (key == '\b' && !typedWords.empty()) {  // Handle backspace
+
+                if (key == '\b' && !typedWords.empty()) { // Handle backspace
                     typedWords.pop_back();
                 } else if (key != '\b') {
                     typedWords += key;
-                    if (typedWords.back() != words[typedWords.size() - 1]) {
+
+                    // Check word completion
+                    size_t typedWordCount = count(typedWords.begin(), typedWords.end(), ' ');
+                    size_t displayedWordCount = count(words.begin(), words.end(), ' ');
+
+                    if (typedWordCount > displayedWordCount || typedWords.back() != words[typedWords.size() - 1]) {
                         player.incrementMisclicks();
                     } else if (typedWords.back() == ' ') {
                         player.incrementWordsTyped();
                     }
                 }
-                display.showTypingProgress(typedWords);
+                display.showTypingProgress(typedWords, words);
+            }
+
+            // Check if all words have been typed correctly
+            if (typedWords == words) {
+                gameOver = true;
+                break;
             }
         }
-        int elapsedTime = chrono::duration_cast<chrono::seconds>(chrono::steady_clock::now() - startTime).count();
-        gameOver = true;
-        display.showGameOver(elapsedTime, player, typedWords, "Count");
+        auto endTime = chrono::steady_clock::now();
+        chrono::duration<double> elapsedTime = endTime - startTime;
+
+        display.showGameOver(elapsedTime.count(), player, typedWords, "Count Words");
     }
 };
 
@@ -246,21 +305,3 @@ int main() {
     
     return 0;
 }
-
-/**
- * Issue with when I reach a new line, otherwise pretty good:   maybe add new line breaks to user input.
- * 
- * kamma@ZiaX1 MINGW64 ~/SoftDev/languagezone/Cplusplus (master)
-$ ./bananatype.exe
-Pick your mode: 10s, 30s, 60s, 10-words, 25-words, 50-words
-25-words
---------------------------------------------------
-
-extraction iron handsome literary revenge though window revenue collation execute feather actual lightly grieve fair establishment packing tangent governing five injure reputation converse quicken pick 
-
---------------------------------------------------
-extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing extraction iron handsome literary revenge though window revenue collation execute feather actal lightly grieve fair establishment packing tangent  governing fice injure reputation converse quicken pick
-
-kamma@ZiaX1 MINGW64 ~/SoftDev/languagezone/Cplusplus (master)
-$
- */
