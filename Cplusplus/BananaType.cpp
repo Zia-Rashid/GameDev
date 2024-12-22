@@ -4,11 +4,11 @@
 #include <fstream>
 #include <list>
 #include <conio.h>
+#include <windows.h>
 
 using namespace std;
 int words_typed;
 vector<string> word_book;
-// list<string> words_displayed;
 string displayed_words;
 
 enum Mode { Seconds_10, Seconds_30, Seconds_60, Words_10, Words_25, Words_50 };
@@ -16,23 +16,25 @@ Mode mode;
 
 void Setup()
 {
-    words_typed = 0;
+    words_typed = 0;                            // initialize word count
 
-    string word;                                // temp string to hold each word in file
+    string word;                                
     ifstream common_words("common_words.txt");
-    while (getline(common_words, word)) {
-        word_book.push_back(word);              // add each word to vector
+    while (getline(common_words, word)) {       // initialize word_book
+        word_book.push_back(word);              
     }
-    common_words.close();                       // good practice for using files
+    common_words.close();                       
 
-    pickMode();                                 // prompts user to choice a mode
+    pickMode();                                 // initialize mode
 
 } 
 
-void gameOver(int time, string words, int misclicks) {
-    int WordCount{ words.size() };
-    cout << "\tGAME OVER!\nSCORE: " << words.size() / static_cast<int>(time) // static cast is more explicit and type safe
-    << "\nAccuracy: " << 100 / words.size()
+void gameOver(int time, string words, int misclicks, string mode) {
+    int letterCount{ words.size() };
+    int wordCount{ words_typed };
+    // may or may not need to have different game overs depending on the mode
+    cout << "\tGAME OVER!\nSCORE: " << wordCount / (static_cast<int>(time) / 60) << "WPMs" // static cast is more explicit and type safe
+    << "\nAccuracy: " << (100 / letterCount) * (letterCount - misclicks) << "%" << endl;
 }
 
 void pickMode() {
@@ -68,22 +70,20 @@ void pickMode() {
 }
 
 void TimedGame(double time) {
-    srand(std::time(NULL));
-    int originalTime = time;
     for (int i = 0; i < 150; i++) {
         int ranVal = rand() % 5001;
         displayed_words += word_book[ranVal]; // add the random words to the back of a string. This will be constantly displayed in console and comparison will be checked. If they are not 0, add 1 to incorrect count
     }
+    
+    cout << '\n' << displayed_words << '\n' <<  endl; 
 
     string bananasTyping{ "" };
     int userSize{ 0 };
     int misclicks{ 0 };
-
-    cout << '\n' << displayed_words << '\n' <<  endl; 
+    int originalTime = time;  // time goes down
 
     while (time > 0)
     {
-        
         if (_kbhit()) {                             // if the key board is hit, evaluate it 
             bananasTyping.push_back(_getch()); 
             if (bananasTyping.size() > userSize) {  // only update data if there is forward progress, not fixing mistakes
@@ -96,23 +96,46 @@ void TimedGame(double time) {
                     words_typed++;
             }
             if (bananasTyping.size() == displayed_words.size() || _getch() == 3) // 3 = ascii ctrl-C
-                gameOver(originalTime, displayed_words.size(), misclicks);       // end game early 
-
-
-
-        time--;
+                gameOver(originalTime, displayed_words, misclicks, "Time");              // end game early 
         }
+        Sleep(1000);                                // wait 1 second before counting down again
+        time--;
     }
-    gameOver(originalTime, displayed_words, misclicks);
+    gameOver(originalTime, displayed_words, misclicks, "Time");
 }
 
 void CountGame(int count) {
+    for (int i = 0; i < count; i++) {
+        int ranVal = rand() % 5001;
+        displayed_words += word_book[ranVal]; 
+    }
+    cout << '\n' << displayed_words << '\n' <<  endl; 
 
-}
+    string bananasTyping{ "" };
+    int userSize{ 0 };
+    int misclicks{ 0 };
+    int time_passed{ 0 };   // time goes up
 
-void Input() 
-{
-
+    while (count > words_typed)
+    {
+        if (_kbhit()) {                             
+            bananasTyping.push_back(_getch()); 
+            if (bananasTyping.size() > userSize) {  
+                userSize = bananasTyping.size();
+                char correct_click = displayed_words.at(userSize - 1);
+                char banana_click = bananasTyping.at(userSize - 1);
+                if (correct_click != banana_click)  
+                    misclicks++;
+                if (banana_click == ' ')            
+                    words_typed++;
+            }
+            if (bananasTyping.size() == displayed_words.size() || _getch() == 3)
+                gameOver(time_passed, displayed_words, misclicks, "Count");              
+        }
+        Sleep(1000);                                
+        time_passed++;
+    }
+    gameOver(time_passed, displayed_words, misclicks, "Count");
 }
 
 void Logic()
@@ -123,7 +146,7 @@ void Logic()
             TimedGame(10.0);
             break;
         case Seconds_30:
-            TimedGame(13.0);
+            TimedGame(30.0);
             break;
         case Seconds_60:
             TimedGame(60.0);
@@ -143,6 +166,10 @@ void Logic()
 
 int main() 
 {
-
+    srand(std::time(NULL));
+    Setup();
+    while (!(gameOver)) {
+        Logic();
+    }
 }
 
